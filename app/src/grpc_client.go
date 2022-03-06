@@ -16,11 +16,11 @@ import (
 
 	"google.golang.org/grpc/admin"
 	_ "google.golang.org/grpc/balancer/roundrobin"
-	//_ "google.golang.org/grpc/resolver" // use for "dns:///be.cluster.local:50051"
-	_ "google.golang.org/grpc/xds" // use for xds-experimental:///be-srv
+	_ "google.golang.org/grpc/resolver" // use for "dns:///be.cluster.local:50051"
+	//_ "google.golang.org/grpc/xds" // use for xds-experimental:///be-srv
 )
 
-// for round-robin LB
+// for pick-first / round-robin LB
 // https://github.com/grpc/grpc-go/tree/master/examples/features/load_balancing
 
 const (
@@ -125,7 +125,7 @@ func main() {
 	}
 	defer lookAsideConn.Close()
 
-	c := echo.NewEchoServerClient(lookAsideConn)
+	c := echo.NewEchoServerClient(roundRobinConn)
 	ctx := context.Background()
 
 	for i := 0; i < 199; i++ {

@@ -1,45 +1,10 @@
-# gRPC xDS Loadbalancing
+# gRPC Client Side Loadbalancing
 
-Sample gRPC client/server application using  [xDS-Based Global Load Balancing](https://godoc.org/google.golang.org/grpc/xds)
+> reference : [grpc_xds](https://github.com/salrashid123/grpc_xds)
 
-_caveat emptor_
-
->> ..this repo and code is not supported by google..
-
-The reason i wrote this was to understand what is going on and to dig into the bit left unanswered in [gRPC xDS example](https://github.com/grpc/grpc-go/blob/master/examples/features/xds/README.md)
-
-_"This example doesn't include instructions to setup xDS environment. Please refer to documentation specific for your xDS management server."_
-
-
-This sample app does really nothing special:
-
-You run two gRPC servers on the same host on two different ports
-
-You start an xDS server in go that replays the protocol to let the gRPC clients know where to connect to
-
-When the client first bootstraps to the xDS server, it sends down instructions to connect directly to one gRPC server instance.
-
-Then wait a minute (really)
-
-The xDS server will rotate the valid backend endpoint targets 60 seconds after it starts up (a trivial example, truly).  The second target is the second port where the second gRPC endpoint is running.
-
-
-thats it.
-
-
-ref:
-
-- [Example xDS Server](https://github.com/envoyproxy/go-control-plane/tree/master/internal/example)
+client side load balancing이 어떻게 동작하는지 확인하기 위한 레포입니다.
 
 ---
-
-## Setup
-
-edit `/etc/hosts`
-
-```bash
-127.0.0.1 be.cluster.local xds.domain.com
-```
 
 ## gRPC Server
 
@@ -51,11 +16,11 @@ go run src/grpc_server.go --grpcport :50051 --servername server1
 go run src/grpc_server.go --grpcport :50052 --servername server2
 ```
 
-> **NOTE** If you change the ports or run more servers, ensure you update the list when you start the xDS server
+> **NOTE** 포트를 변경하거나, 더 적은 혹은 더 많은 서버를 띄울 시 xDS 서버를 띄울 때 upstream port를 확인해야 합니다.
 
 ## gRPC Client (DNS)
 
-Enable debug tracing on the client; the whole intent is to see all the details!
+디버그를 위한 걸정. 모든 세부사항을 보기 위함.
 
 ```bash
 export GRPC_GO_LOG_VERBOSITY_LEVEL=99
@@ -95,6 +60,78 @@ INFO: 2021/06/15 10:36:07 [core] Channel Connectivity change to READY
 2021/06/15 10:36:07 RPC Response: 0 message:"Hello unary RPC msg   from server1"
 ```
 
+## Pick First
+```go
+// line 128
+// change to pickFirstConn
+c := echo.NewEchoServerClient(pickFirstConn)
+```
+
+### start client
+```bash
+go run src/grpc_client.go
+```
+
+```log
+$ go run src/grpc_client.go
+2022/03/06 22:16:23 RPC Response: 0 message:"Hello ping!  from server1"
+2022/03/06 22:16:24 RPC Response: 1 message:"Hello ping!  from server1"
+2022/03/06 22:16:25 RPC Response: 2 message:"Hello ping!  from server1"
+2022/03/06 22:16:26 RPC Response: 3 message:"Hello ping!  from server1"
+2022/03/06 22:16:27 RPC Response: 4 message:"Hello ping!  from server1"
+2022/03/06 22:16:28 RPC Response: 5 message:"Hello ping!  from server1"
+2022/03/06 22:16:29 RPC Response: 6 message:"Hello ping!  from server1"
+2022/03/06 22:16:30 RPC Response: 7 message:"Hello ping!  from server1"
+2022/03/06 22:16:31 RPC Response: 8 message:"Hello ping!  from server1"    <<<< disconnect server 1
+2022/03/06 22:16:32 RPC Response: 9 message:"Hello ping!  from server2"
+2022/03/06 22:16:33 RPC Response: 10 message:"Hello ping!  from server2"
+2022/03/06 22:16:34 RPC Response: 11 message:"Hello ping!  from server2"
+2022/03/06 22:16:35 RPC Response: 12 message:"Hello ping!  from server2"
+
+```
+
+
+## Round Robin
+```go
+// line 128
+// change to roundRobinConn
+c := echo.NewEchoServerClient(roundRobinConn)
+```
+
+### start client
+```bash
+go run src/grpc_client.go
+```
+
+```log
+$ go run src/grpc_client.go
+2022/03/06 22:18:49 RPC Response: 0 message:"Hello ping!  from server1"
+2022/03/06 22:18:50 RPC Response: 1 message:"Hello ping!  from server1"
+2022/03/06 22:18:51 RPC Response: 2 message:"Hello ping!  from server2"
+2022/03/06 22:18:52 RPC Response: 3 message:"Hello ping!  from server1"
+2022/03/06 22:18:53 RPC Response: 4 message:"Hello ping!  from server2"
+2022/03/06 22:18:54 RPC Response: 5 message:"Hello ping!  from server1"
+2022/03/06 22:18:55 RPC Response: 6 message:"Hello ping!  from server2"
+2022/03/06 22:18:56 RPC Response: 7 message:"Hello ping!  from server1"
+2022/03/06 22:18:57 RPC Response: 8 message:"Hello ping!  from server2"    <<<< disconnect server 1
+2022/03/06 22:18:58 RPC Response: 9 message:"Hello ping!  from server2"
+2022/03/06 22:18:59 RPC Response: 10 message:"Hello ping!  from server2"
+2022/03/06 22:19:00 RPC Response: 11 message:"Hello ping!  from server2"
+2022/03/06 22:19:01 RPC Response: 12 message:"Hello ping!  from server2"
+2022/03/06 22:19:02 RPC Response: 13 message:"Hello ping!  from server2"
+2022/03/06 22:19:03 RPC Response: 14 message:"Hello ping!  from server2"
+2022/03/06 22:19:04 RPC Response: 15 message:"Hello ping!  from server2"
+2022/03/06 22:19:05 RPC Response: 16 message:"Hello ping!  from server2"
+2022/03/06 22:19:06 RPC Response: 17 message:"Hello ping!  from server2"    <<<< reconnect server 1
+2022/03/06 22:19:07 RPC Response: 18 message:"Hello ping!  from server1"
+2022/03/06 22:19:08 RPC Response: 19 message:"Hello ping!  from server2"
+2022/03/06 22:19:09 RPC Response: 20 message:"Hello ping!  from server1"
+2022/03/06 22:19:10 RPC Response: 21 message:"Hello ping!  from server2"
+
+
+```
+
+
 ## xDS Server
 
 Now start the xDS server:
@@ -107,21 +144,19 @@ INFO[0000] Starting control plane
 INFO[0000] management server listening                   port=18000
 ```
 
-> **NOTE** Update the list of `--upstream_port` flags to reflect the list of ports for the gRPC servers that you started
+> **NOTE** `--upstream_port` 에 당신이 띄운 서버를 반영하세요.
 
 
 ## gRPC Client (xDS)
 
-Ensure the xds Bootstrap file specifies the correct `server_url`
-
-The grpc client will connect to this as the the xDS server.  The gRPC client library looks for a specific env-var (`GRPC_XDS_BOOTSTRAP`) that points to the file 
+xDS 프로토콜 사용 시, grpc client는 xDS server를 아래 부트스트랩 파일에서 확인합니다.    
 
 - `xds_bootstrap.json`:
 ```json
 {
   "xds_servers": [
     {
-      "server_uri": "xds.domain.com:18000",
+      "server_uri": "localhost:18000",
       "channel_creds": [
         {
           "type": "insecure"
@@ -203,15 +238,6 @@ $ go run src/grpc_client.go --host xds:///be-srv
 ```
 
 ---
-
-If you want more details...
-
-## References
-
-- [Envoy Listener proto](https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/listener.proto)
-- [Envoy Cluster proto](https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/cluster.proto)
-- [Envoy Endpoint proto](https://www.envoyproxy.io/docs/envoy/latest/api-v2/api/v2/endpoint.proto)
-
 
 ### xDS Server start
 
