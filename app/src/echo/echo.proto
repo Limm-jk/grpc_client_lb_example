@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+option go_package = "src/echo";
+
 package echo;
 
 service EchoServer {
