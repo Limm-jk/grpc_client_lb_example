@@ -72,7 +72,7 @@ var (
 const (
 	localhost       = "127.0.0.1"
 	Ads             = "ads"
-	backendHostName = "be.cluster.local"
+	backendHostName = "localhost"
 	listenerName    = "be-srv"
 	routeConfigName = "be-srv-route"
 	clusterName     = "be-srv-cluster"
@@ -367,8 +367,7 @@ func main() {
 
 		config.SetSnapshot(nodeId, snap)
 
-		time.Sleep(60 * time.Second)
-
+		time.Sleep(10 * time.Second)
 	}
 
 }
