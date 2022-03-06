@@ -1,10 +1,10 @@
 package main
 
 import (
-	"echo"
 	"flag"
 	"fmt"
 	"log"
+	echo "main/src/echo"
 	"net"
 	"net/http"
 	"os"
@@ -89,5 +89,4 @@ func main() {
 	healthpb.RegisterHealthServer(s, &healthServer{})
 	log.Println("Starting grpcServer")
 	s.Serve(lis)
-
 }
