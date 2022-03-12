@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/resolver"
-	echo "main/src/echo"
+	"main/src/echo"
 	"net"
 
 	"log"
